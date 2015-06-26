@@ -104,5 +104,6 @@ SCHEMA = s.Message(
         cpu=s.Value()),
     runtime=s.Value(converter=c.ToJsonString),
     threadsafe=s.Value(),
+    version=s.Value('id', converter=c.ToJsonString),
     vm=s.Value(),
     vm_settings=s.Map('beta_settings'))
