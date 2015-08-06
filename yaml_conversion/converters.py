@@ -123,7 +123,7 @@ def StringToInt(handle_automatic=False):
 
 def SecondsToDuration(value):
   """Convert seconds expressed as integer to a Duration value."""
-  return {'seconds': int(value)}
+  return '%ss' % int(value)
 
 
 def LatencyToDuration(value):
@@ -143,17 +143,9 @@ def LatencyToDuration(value):
   if value == 'automatic':
     return None
   if value.endswith('ms'):
-    total_seconds = float(value[:-2]) / _MILLISECONDS_PER_SECOND
+    return '%ss' % (float(value[:-2]) / _MILLISECONDS_PER_SECOND)
   else:
-    total_seconds = float(value[:-1])
-
-  seconds, nanoseconds = divmod(total_seconds * _NANOSECONDS_PER_SECOND,
-                                _NANOSECONDS_PER_SECOND)
-
-  return {
-      'seconds': long(seconds),
-      'nanos': nanoseconds,
-  }
+    return value
 
 
 def IdleTimeoutToDuration(value):
@@ -171,9 +163,9 @@ def IdleTimeoutToDuration(value):
   if not re.compile(appinfo._IDLE_TIMEOUT_REGEX).match(value):  # pylint: disable=protected-access
     raise ValueError('Unrecognized idle timeout: %s' % value)
   if value.endswith('m'):
-    return {'seconds': int(value[:-1]) * _SECONDS_PER_MINUTE}
+    return '%ss' % (int(value[:-1]) * _SECONDS_PER_MINUTE)
   else:
-    return {'seconds': int(value[:-1])}
+    return value
 
 
 def ExpirationToDuration(value):
@@ -191,7 +183,7 @@ def ExpirationToDuration(value):
   if not re.compile(appinfo._EXPIRATION_REGEX).match(value):  # pylint: disable=protected-access
     raise ValueError('Unrecognized expiration: %s' % value)
   delta = appinfo.ParseExpiration(value)
-  return {'seconds': delta}
+  return '%ss' % delta
 
 
 def ConvertUrlHandler(handler):
