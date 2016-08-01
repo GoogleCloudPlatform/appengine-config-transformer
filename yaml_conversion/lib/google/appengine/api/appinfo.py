@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#!/usr/bin/python2.4
-#
 # Copyright 2007 Google Inc. All Rights Reserved.
 
 """AppInfo tools.
@@ -43,15 +41,14 @@ import string
 import sys
 import wsgiref.util
 
+# pylint: disable=g-import-not-at-top
 if os.environ.get('APPENGINE_RUNTIME') == 'python27':
-  from google.appengine.api import pagespeedinfo
   from google.appengine.api import validation
   from google.appengine.api import yaml_builder
   from google.appengine.api import yaml_listener
   from google.appengine.api import yaml_object
 else:
   # This case covers both Python 2.5 and unittests, which are 2.5 only.
-  from yaml_conversion.lib.google.appengine.api import pagespeedinfo
   from yaml_conversion.lib.google.appengine.api import validation
   from yaml_conversion.lib.google.appengine.api import yaml_builder
   from yaml_conversion.lib.google.appengine.api import yaml_listener
@@ -59,6 +56,8 @@ else:
 
 from yaml_conversion.lib.google.appengine.api import appinfo_errors
 from yaml_conversion.lib.google.appengine.api import backendinfo
+
+# pylint: enable=g-import-not-at-top
 
 # Regular expression for matching url, file, url root regular expressions.
 # url_root is identical to url except it additionally imposes not ending with *.
@@ -164,6 +163,7 @@ BUILTIN_NAME_PREFIX = 'ah-builtin'
 RUNTIME_RE_STRING = r'[a-z][a-z0-9\-]{0,29}'
 
 API_VERSION_RE_STRING = r'[\w.]{1,32}'
+ENV_RE_STRING = r'[\w.]{1,32}'
 
 SOURCE_LANGUAGE_RE_STRING = r'[\w.\-]{1,32}'
 
@@ -185,6 +185,7 @@ DATASTORE_ID_POLICY_DEFAULT = 'default'
 SECURE_HTTP = 'never'
 SECURE_HTTPS = 'always'
 SECURE_HTTP_OR_HTTPS = 'optional'
+# Used for missing values; see http://b/issue?id=2073962.
 SECURE_DEFAULT = 'default'
 
 REQUIRE_MATCHING_FILE = 'require_matching_file'
@@ -224,6 +225,7 @@ REDIRECT_HTTP_RESPONSE_CODE = 'redirect_http_response_code'
 APPLICATION = 'application'
 PROJECT = 'project'  # An alias for 'application'
 MODULE = 'module'
+SERVICE = 'service'
 AUTOMATIC_SCALING = 'automatic_scaling'
 MANUAL_SCALING = 'manual_scaling'
 BASIC_SCALING = 'basic_scaling'
@@ -239,6 +241,9 @@ MAJOR_VERSION = 'major_version'
 MINOR_VERSION = 'minor_version'
 RUNTIME = 'runtime'
 API_VERSION = 'api_version'
+ENV = 'env'
+ENTRYPOINT = 'entrypoint'
+RUNTIME_CONFIG = 'runtime_config'
 SOURCE_LANGUAGE = 'source_language'
 BUILTINS = 'builtins'
 INCLUDES = 'includes'
@@ -259,7 +264,6 @@ DATASTORE_AUTO_ID_POLICY = 'auto_id_policy'
 API_CONFIG = 'api_config'
 CODE_LOCK = 'code_lock'
 ENV_VARIABLES = 'env_variables'
-PAGESPEED = 'pagespeed'
 
 SOURCE_REPO_RE_STRING = r'^[a-z][a-z0-9\-\+\.]*:[^#]*$'
 SOURCE_REVISION_RE_STRING = r'^[0-9a-fA-F]+$'
@@ -268,21 +272,38 @@ SOURCE_REVISION_RE_STRING = r'^[0-9a-fA-F]+$'
 SOURCE_REFERENCES_MAX_SIZE = 2048
 
 INSTANCE_CLASS = 'instance_class'
-# Attributes for AutomaticScaling
+
+# Attributes for Standard App Engine (only) AutomaticScaling.
 MINIMUM_PENDING_LATENCY = 'min_pending_latency'
 MAXIMUM_PENDING_LATENCY = 'max_pending_latency'
 MINIMUM_IDLE_INSTANCES = 'min_idle_instances'
 MAXIMUM_IDLE_INSTANCES = 'max_idle_instances'
 MAXIMUM_CONCURRENT_REQUEST = 'max_concurrent_requests'
 
-# Attributes for VM-based AutomaticScaling.
-# See AutoscalingConfig in
+# Attributes for Managed VMs (only) AutomaticScaling. These are very
+# different than Standard App Engine because scaling settings are
+# mapped to Cloud Autoscaler (as opposed to the clone scheduler). See
+# AutoscalingConfig in
 MIN_NUM_INSTANCES = 'min_num_instances'
 MAX_NUM_INSTANCES = 'max_num_instances'
 COOL_DOWN_PERIOD_SEC = 'cool_down_period_sec'
 CPU_UTILIZATION = 'cpu_utilization'
 CPU_UTILIZATION_UTILIZATION = 'target_utilization'
 CPU_UTILIZATION_AGGREGATION_WINDOW_LENGTH_SEC = 'aggregation_window_length_sec'
+# Managed VMs Richer Autoscaling. These (MVMs only) scaling settings
+# are supported for both vm:true and env:2|flex, but are not yet
+# publicly documented.
+TARGET_NETWORK_SENT_BYTES_PER_SEC = 'target_network_sent_bytes_per_sec'
+TARGET_NETWORK_SENT_PACKETS_PER_SEC = 'target_network_sent_packets_per_sec'
+TARGET_NETWORK_RECEIVED_BYTES_PER_SEC = 'target_network_received_bytes_per_sec'
+TARGET_NETWORK_RECEIVED_PACKETS_PER_SEC = (
+    'target_network_received_packets_per_sec')
+TARGET_DISK_WRITE_BYTES_PER_SEC = 'target_disk_write_bytes_per_sec'
+TARGET_DISK_WRITE_OPS_PER_SEC = 'target_disk_write_ops_per_sec'
+TARGET_DISK_READ_BYTES_PER_SEC = 'target_disk_read_bytes_per_sec'
+TARGET_DISK_READ_OPS_PER_SEC = 'target_disk_read_ops_per_sec'
+TARGET_REQUEST_COUNT_PER_SEC = 'target_request_count_per_sec'
+TARGET_CONCURRENT_REQUESTS = 'target_concurrent_requests'
 
 
 # Attributes for ManualScaling
@@ -382,9 +403,8 @@ _SUPPORTED_LIBRARIES = [
         'django',
         'http://www.djangoproject.com/',
         'A full-featured web application framework for Python.',
-        ['1.2', '1.3', '1.4', '1.5'],
+        ['1.2', '1.3', '1.4', '1.5', '1.9'],
         latest_version='1.4',
-        experimental_versions=['1.5'],
         ),
     _VersionedLibrary(
         'endpoints',
@@ -412,7 +432,7 @@ _SUPPORTED_LIBRARIES = [
         'markupsafe',
         'http://pypi.python.org/pypi/MarkupSafe',
         'A XML/HTML/XHTML markup safe string for Python.',
-        ['0.15'],
+        ['0.15', '0.23'],
         latest_version='0.15',
         ),
     _VersionedLibrary(
@@ -426,9 +446,9 @@ _SUPPORTED_LIBRARIES = [
         'MySQLdb',
         'http://mysql-python.sourceforge.net/',
         'A Python DB API v2.0 compatible interface to MySQL.',
-        ['1.2.4b4', '1.2.4'],
-        latest_version='1.2.4b4',
-        experimental_versions=['1.2.4b4', '1.2.4']
+        ['1.2.4b4', '1.2.4', '1.2.5'],
+        latest_version='1.2.5',
+        experimental_versions=['1.2.4b4', '1.2.4', '1.2.5']
         ),
     _VersionedLibrary(
         'numpy',
@@ -454,6 +474,14 @@ _SUPPORTED_LIBRARIES = [
         default_version='1.0',
         ),
     _VersionedLibrary(
+        'pytz',
+        'https://pypi.python.org/pypi/pytz?',
+        'A library for cross-platform timezone calculations',
+        ['2016.4'],
+        latest_version='2016.4',
+        default_version='2016.4',
+        ),
+    _VersionedLibrary(
         'crcmod',
         'http://crcmod.sourceforge.net/',
         'A library for generating Cyclic Redundancy Checks (CRC).',
@@ -473,7 +501,7 @@ _SUPPORTED_LIBRARIES = [
         'pycrypto',
         'https://www.dlitz.net/software/pycrypto/',
         'A library of cryptography functions such as random number generation.',
-        ['2.3', '2.6'],
+        ['2.3', '2.6', '2.6.1'],
         latest_version='2.6',
         ),
     _VersionedLibrary(
@@ -487,8 +515,9 @@ _SUPPORTED_LIBRARIES = [
         'ssl',
         'http://docs.python.org/dev/library/ssl.html',
         'The SSL socket wrapper built-in module.',
-        ['2.7'],
+        ['2.7', '2.7.11'],
         latest_version='2.7',
+        default_version='2.7.11',
         ),
     _VersionedLibrary(
         'webapp2',
@@ -529,8 +558,7 @@ REQUIRED_LIBRARIES = {
     ('matplotlib', 'latest'): [('numpy', 'latest')],
 }
 
-_USE_VERSION_FORMAT = ('use one of: "%s" or "latest" '
-                       '("latest" recommended for development only)')
+_USE_VERSION_FORMAT = ('use one of: "%s"')
 
 
 # See RFC 2616 section 2.2.
@@ -568,14 +596,13 @@ _MAX_COOKIE_LENGTH = 4096
 # trailing NULL character, which is why this is not 2048.
 _MAX_URL_LENGTH = 2047
 
-# The following suite of functions provide information about the sets of
-# supported runtimes.  These sets can be modified by external systems,
-# notably gcloud.
+# We allow certain headers to be larger than the normal limit of 8192 bytes.
+_MAX_HEADER_SIZE_FOR_EXEMPTED_HEADERS = 10240
 
 _CANNED_RUNTIMES = ('contrib-dart', 'dart', 'go', 'php', 'php55', 'python',
-                    'python27', 'java', 'java7', 'vm', 'custom', 'nodejs')
+                    'python27', 'python-compat', 'java', 'java7', 'vm',
+                    'custom', 'nodejs', 'ruby')
 _all_runtimes = _CANNED_RUNTIMES
-_vm_runtimes = _CANNED_RUNTIMES
 
 
 def GetAllRuntimes():
@@ -587,35 +614,6 @@ def GetAllRuntimes():
     Tuple of strings.
   """
   return _all_runtimes
-
-
-def SetAllRuntimes(runtimes):
-  """Sets the list of all valid runtimes.
-
-  Args:
-    runtimes: Tuple of strings defining the names of all valid runtimes.
-  """
-  global _all_runtimes
-  _all_runtimes = runtimes
-
-
-def GetVmRuntimes():
-  """Returns the list of runtimes for the vm_runtimes field.
-
-  Returns:
-    Tuple of strings.
-  """
-  return _vm_runtimes
-
-
-def SetVmRuntimes(runtimes):
-  """Sets the list of all runtimes valid for the vm_runtimes field.
-
-  Args:
-    runtimes: Tuple of strings defining all valid vm runtimes.
-  """
-  global _vm_runtimes
-  _vm_runtimes = runtimes
 
 
 class HandlerBase(validation.Validated):
@@ -669,6 +667,11 @@ class HttpHeadersDict(validation.ValidatedDict):
 
   MAX_HEADER_LENGTH = 500
   MAX_HEADER_VALUE_LENGTHS = {
+      'content-security-policy': _MAX_HEADER_SIZE_FOR_EXEMPTED_HEADERS,
+      'x-content-security-policy': _MAX_HEADER_SIZE_FOR_EXEMPTED_HEADERS,
+      'x-webkit-csp': _MAX_HEADER_SIZE_FOR_EXEMPTED_HEADERS,
+      'content-security-policy-report-only':
+          _MAX_HEADER_SIZE_FOR_EXEMPTED_HEADERS,
       'set-cookie': _MAX_COOKIE_LENGTH,
       'set-cookie2': _MAX_COOKIE_LENGTH,
       'location': _MAX_URL_LENGTH}
@@ -1087,6 +1090,13 @@ class URLMap(HandlerBase):
           ' also specified a mime_type of %r.' % (content_type, self.mime_type))
 
   def FixSecureDefaults(self):
+    """Force omitted 'secure: ...' handler fields to 'secure: optional'.
+
+    The effect is that handler.secure is never equal to the (nominal)
+    default.
+
+    See http://b/issue?id=2073962.
+    """
     if self.secure == SECURE_DEFAULT:
       self.secure = SECURE_HTTP_OR_HTTPS
 
@@ -1357,21 +1367,22 @@ class Library(validation.Validated):
     if self.name not in _NAME_TO_SUPPORTED_LIBRARY:
       raise appinfo_errors.InvalidLibraryName(
           'the library "%s" is not supported' % self.name)
-
     supported_library = _NAME_TO_SUPPORTED_LIBRARY[self.name]
-    if self.version != 'latest':
-      if self.version not in supported_library.supported_versions:
-        raise appinfo_errors.InvalidLibraryVersion(
-            ('%s version "%s" is not supported, ' + _USE_VERSION_FORMAT) % (
-                self.name,
-                self.version,
-                '", "'.join(supported_library.non_deprecated_versions)))
-      elif self.version in supported_library.deprecated_versions:
-        logging.warning(
-            ('%s version "%s" is deprecated, ' + _USE_VERSION_FORMAT) % (
-                self.name,
-                self.version,
-                '", "'.join(supported_library.non_deprecated_versions)))
+    if self.version == 'latest':
+      self.version = supported_library.latest_version
+    elif self.version not in supported_library.supported_versions:
+      raise appinfo_errors.InvalidLibraryVersion(
+          ('%s version "%s" is not supported, ' + _USE_VERSION_FORMAT) % (
+              self.name,
+              self.version,
+              '", "'.join(supported_library.non_deprecated_versions)))
+    elif self.version in supported_library.deprecated_versions:
+      use_vers = '", "'.join(supported_library.non_deprecated_versions)
+      logging.warning(
+          '%s version "%s" is deprecated, ' + _USE_VERSION_FORMAT,
+          self.name,
+          self.version,
+          use_vers)
 
 
 class CpuUtilization(validation.Validated):
@@ -1400,6 +1411,26 @@ class AutomaticScaling(validation.Validated):
       COOL_DOWN_PERIOD_SEC: validation.Optional(
           validation.Range(60, sys.maxint, int)),
       CPU_UTILIZATION: validation.Optional(CpuUtilization),
+      TARGET_NETWORK_SENT_BYTES_PER_SEC:
+      validation.Optional(validation.Range(1, sys.maxint)),
+      TARGET_NETWORK_SENT_PACKETS_PER_SEC:
+      validation.Optional(validation.Range(1, sys.maxint)),
+      TARGET_NETWORK_RECEIVED_BYTES_PER_SEC:
+      validation.Optional(validation.Range(1, sys.maxint)),
+      TARGET_NETWORK_RECEIVED_PACKETS_PER_SEC:
+      validation.Optional(validation.Range(1, sys.maxint)),
+      TARGET_DISK_WRITE_BYTES_PER_SEC:
+      validation.Optional(validation.Range(1, sys.maxint)),
+      TARGET_DISK_WRITE_OPS_PER_SEC:
+      validation.Optional(validation.Range(1, sys.maxint)),
+      TARGET_DISK_READ_BYTES_PER_SEC:
+      validation.Optional(validation.Range(1, sys.maxint)),
+      TARGET_DISK_READ_OPS_PER_SEC:
+      validation.Optional(validation.Range(1, sys.maxint)),
+      TARGET_REQUEST_COUNT_PER_SEC:
+      validation.Optional(validation.Range(1, sys.maxint)),
+      TARGET_CONCURRENT_REQUESTS:
+      validation.Optional(validation.Range(1, sys.maxint)),
   }
 
 
@@ -1418,7 +1449,24 @@ class BasicScaling(validation.Validated):
   }
 
 
+class RuntimeConfig(validation.ValidatedDict):
+  """Class for "vanilla" runtime configuration.
+
+  Fields used vary by runtime, so we delegate validation to the per-runtime
+  build processes.
+
+  These are intended to be used during Dockerfile generation, not after VM boot.
+  """
+
+  KEY_VALIDATOR = validation.Regex('[a-zA-Z_][a-zA-Z0-9_]*')
+  VALUE_VALIDATOR = str
+
+
 class VmSettings(validation.ValidatedDict):
+  """Class for VM settings.
+
+  We don't validate these further here.  They're validated server side.
+  """
 
   KEY_VALIDATOR = validation.Regex('[a-zA-Z_][a-zA-Z0-9_]*')
   VALUE_VALIDATOR = str
@@ -1435,6 +1483,13 @@ class VmSettings(validation.ValidatedDict):
 
 
 class BetaSettings(VmSettings):
+  """Class for Beta (internal or unreleased) settings.
+
+  This class is meant to replace VmSettings eventually.
+  All new beta settings must be registered in shared_constants.py.
+
+  We don't validate these further here.  They're validated server side.
+  """
 
   @classmethod
   def Merge(cls, beta_settings_one, beta_settings_two):
@@ -1468,78 +1523,6 @@ class EnvironmentVariables(validation.ValidatedDict):
     result_env_variables.update(env_variables_two or {})
     return (EnvironmentVariables(**result_env_variables)
             if result_env_variables else None)
-
-
-def VmSafeSetRuntime(appyaml, runtime):
-  """Sets the runtime while respecting vm runtimes rules for runtime settings.
-
-  Args:
-     appyaml: AppInfoExternal instance, which will be modified.
-     runtime: The runtime to use.
-
-  Returns:
-     The passed in appyaml (which has been modified).
-  """
-  if appyaml.vm:
-    if not appyaml.vm_settings:
-      appyaml.vm_settings = VmSettings()
-
-    # Both 'dart' and 'contrib-dart' runtimes are known as 'dart', and
-    # always use a Docker image.
-    if runtime == 'dart' or runtime == 'contrib-dart':
-      runtime = 'dart'
-      appyaml.vm_settings['has_docker_image'] = True
-    # Convert all other runtimes that are not legal for the vm_runtimes field
-    # to "custom".
-    elif runtime not in GetVmRuntimes():
-      runtime = 'custom'
-
-    # Patch up vm runtime setting. Copy 'runtime' to 'vm_runtime' and
-    # set runtime to the string 'vm'.
-    appyaml.vm_settings['vm_runtime'] = runtime
-    appyaml.runtime = 'vm'
-  else:
-    appyaml.runtime = runtime
-  return appyaml
-
-
-def NormalizeVmSettings(appyaml):
-  """Normalize Vm settings.
-
-  Args:
-    appyaml: AppInfoExternal instance.
-
-  Returns:
-    Normalized app yaml.
-  """
-  # NOTE(user): In the input files, 'vm' is not a type of runtime, but
-  # rather is specified as "vm: true|false". In the code, 'vm'
-  # is represented as a value of AppInfoExternal.runtime.
-  # NOTE(user): This hack is only being applied after the parsing of
-  # AppInfoExternal. If the 'vm' attribute can ever be specified in the
-  # AppInclude, then this processing will need to be done there too.
-  if appyaml.vm:
-    if not appyaml.vm_settings:
-      appyaml.vm_settings = VmSettings()
-
-    if 'vm_runtime' not in appyaml.vm_settings:
-      appyaml = VmSafeSetRuntime(appyaml, appyaml.runtime)
-
-    # Copy fields that are automatically added by the SDK or this class
-    # to beta_settings.
-    if hasattr(appyaml, 'beta_settings') and appyaml.beta_settings:
-      # Only copy if beta_settings already exists, because we have logic in
-      # appversion.py to discard all of vm_settings if anything is in
-      # beta_settings.  So we won't create an empty one just to add these
-      # fields.
-      for field in ['vm_runtime',
-                    'has_docker_image',
-                    'image',
-                    'module_yaml_path']:
-        if field not in appyaml.beta_settings and field in appyaml.vm_settings:
-          appyaml.beta_settings[field] = appyaml.vm_settings[field]
-
-  return appyaml
 
 
 def ValidateSourceReference(ref):
@@ -1749,12 +1732,14 @@ class AppInclude(validation.Validated):
       appyaml.handlers.extend(tail)
 
     appyaml = cls._CommonMergeOps(appyaml, appinclude)
-    return NormalizeVmSettings(appyaml)
+    appyaml.NormalizeVmSettings()
+    return appyaml
 
   @classmethod
   def MergeAppIncludes(cls, appinclude_one, appinclude_two):
-    """This function merges the non-referential state of the provided AppInclude
-    objects.  That is, builtins and includes directives are not preserved, but
+    """Merges the non-referential state of the provided AppInclude.
+
+    That is, builtins and includes directives are not preserved, but
     any static objects are copied into an aggregate AppInclude object that
     preserves the directives of both provided AppInclude objects.
 
@@ -1832,11 +1817,18 @@ class AppInfoExternal(validation.Validated):
       # An alias for APPLICATION.
       PROJECT: validation.Optional(APPLICATION_RE_STRING),
       MODULE: validation.Optional(MODULE_ID_RE_STRING),
+      # 'service' will replace 'module' soon
+      SERVICE: validation.Optional(MODULE_ID_RE_STRING),
       VERSION: validation.Optional(MODULE_VERSION_ID_RE_STRING),
       RUNTIME: validation.Optional(RUNTIME_RE_STRING),
       # A new api_version requires a release of the dev_appserver, so it
       # is ok to hardcode the version names here.
-      API_VERSION: API_VERSION_RE_STRING,
+      API_VERSION: validation.Optional(API_VERSION_RE_STRING),
+      # The App Engine environment to run this version in. (VM vs. non-VM, etc.)
+      ENV: validation.Optional(ENV_RE_STRING),
+      # The SDK will use this for generated Dockerfiles
+      ENTRYPOINT: validation.Optional(validation.Type(str)),
+      RUNTIME_CONFIG: validation.Optional(RuntimeConfig),
       INSTANCE_CLASS: validation.Optional(_INSTANCE_CLASS_REGEX),
       SOURCE_LANGUAGE: validation.Optional(
           validation.Regex(SOURCE_LANGUAGE_RE_STRING)),
@@ -1873,9 +1865,7 @@ class AppInfoExternal(validation.Validated):
       API_CONFIG: validation.Optional(ApiConfigHandler),
       CODE_LOCK: validation.Optional(bool),
       ENV_VARIABLES: validation.Optional(EnvironmentVariables),
-      PAGESPEED: validation.Optional(pagespeedinfo.PagespeedEntry),
   }
-
 
   def CheckInitialized(self):
     """Performs non-regex-based validation.
@@ -1889,6 +1879,7 @@ class AppInfoExternal(validation.Validated):
         can be used.
       - That the version name doesn't start with BUILTIN_NAME_PREFIX
       - If redirect_http_response_code exists, it is in the list of valid 300s.
+      - That module and service aren't both set
 
     Raises:
       DuplicateLibrary: if the name library name is specified more than once.
@@ -1902,9 +1893,10 @@ class AppInfoExternal(validation.Validated):
           present.
       RuntimeDoesNotSupportLibraries: if libraries clause is used for a runtime
           that does not support it (e.g. python25).
+      ModuleAndServiceDefined: if both 'module' and 'service' keywords are used.
     """
     super(AppInfoExternal, self).CheckInitialized()
-    if self.runtime is None and not self.vm:
+    if self.runtime is None and not self.IsVm():
       raise appinfo_errors.MissingRuntimeError(
           'You must specify a "runtime" field for non-vm applications.')
     elif self.runtime is None:
@@ -1912,13 +1904,16 @@ class AppInfoExternal(validation.Validated):
       # we know that it's been defaulted)
       self.runtime = 'custom'
     if (not self.handlers and not self.builtins and not self.includes
-        and not self.vm):
+        and not self.IsVm()):
       raise appinfo_errors.MissingURLMapping(
           'No URLMap entries found in application configuration')
     if self.handlers and len(self.handlers) > MAX_URL_MAPS:
       raise appinfo_errors.TooManyURLMappings(
           'Found more than %d URLMap entries in application configuration' %
           MAX_URL_MAPS)
+    if self.service and self.module:
+      raise appinfo_errors.ModuleAndServiceDefined(
+          'Cannot define both "module" and "service" in configuration')
 
     vm_runtime_python27 = (
         self.runtime == 'vm' and
@@ -1932,7 +1927,7 @@ class AppInfoExternal(validation.Validated):
     if (self.threadsafe is None and
         (self.runtime == 'python27' or vm_runtime_python27)):
       raise appinfo_errors.MissingThreadsafe(
-          'threadsafe must be present and set to either "yes" or "no"')
+          'threadsafe must be present and set to a true or false YAML value')
 
     if self.auto_id_policy == DATASTORE_ID_POLICY_LEGACY:
       datastore_auto_ids_url = ('http://developers.google.com/'
@@ -2034,10 +2029,6 @@ class AppInfoExternal(validation.Validated):
       if library.default_version and library.name not in enabled_libraries:
         libraries.append(Library(name=library.name,
                                  version=library.default_version))
-    for library in libraries:
-      if library.version == 'latest':
-        library.version = _NAME_TO_SUPPORTED_LIBRARY[
-            library.name].supported_versions[-1]
     return libraries
 
   def ApplyBackendSettings(self, backend_name):
@@ -2095,6 +2086,57 @@ class AppInfoExternal(validation.Validated):
       return self.beta_settings.get('vm_runtime')
     return self.runtime
 
+  def SetEffectiveRuntime(self, runtime):
+    """Sets the runtime while respecting vm runtimes rules for runtime settings.
+
+    Args:
+       runtime: The runtime to use.
+    """
+    if self.IsVm():
+      if not self.vm_settings:
+        self.vm_settings = VmSettings()
+
+      # Patch up vm runtime setting. Copy 'runtime' to 'vm_runtime' and
+      # set runtime to the string 'vm'.
+      self.vm_settings['vm_runtime'] = runtime
+      self.runtime = 'vm'
+    else:
+      self.runtime = runtime
+
+  def NormalizeVmSettings(self):
+    """Normalize Vm settings.
+    """
+    # NOTE(user): In the input files, 'vm' is not a type of runtime, but
+    # rather is specified as "vm: true|false". In the code, 'vm'
+    # is represented as a value of AppInfoExternal.runtime.
+    # NOTE(user): This hack is only being applied after the parsing of
+    # AppInfoExternal. If the 'vm' attribute can ever be specified in the
+    # AppInclude, then this processing will need to be done there too.
+    if self.IsVm():
+      if not self.vm_settings:
+        self.vm_settings = VmSettings()
+
+      if 'vm_runtime' not in self.vm_settings:
+        self.SetEffectiveRuntime(self.runtime)
+
+      # Copy fields that are automatically added by the SDK or this class
+      # to beta_settings.
+      if hasattr(self, 'beta_settings') and self.beta_settings:
+        # Only copy if beta_settings already exists, because we have logic in
+        # appversion.py to discard all of vm_settings if anything is in
+        # beta_settings.  So we won't create an empty one just to add these
+        # fields.
+        for field in ['vm_runtime',
+                      'has_docker_image',
+                      'image',
+                      'module_yaml_path']:
+          if field not in self.beta_settings and field in self.vm_settings:
+            self.beta_settings[field] = self.vm_settings[field]
+
+  # TODO(user): env replaces vm. Remove vm when field is removed.
+  def IsVm(self):
+    return (self.vm or
+            self.env in ['2', 'flex', 'flexible'])
 
 def ValidateHandlers(handlers, is_include_file=False):
   """Validates a list of handler (URLMap) objects.
@@ -2165,7 +2207,8 @@ def LoadSingleAppInfo(app_info):
     appyaml.application = appyaml.project
     appyaml.project = None
 
-  return NormalizeVmSettings(appyaml)
+  appyaml.NormalizeVmSettings()
+  return appyaml
 
 
 class AppInfoSummary(validation.Validated):

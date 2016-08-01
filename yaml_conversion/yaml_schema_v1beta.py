@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Definition for conversion between legacy YAML and One Platform protos."""
+"""Definition for conversion between legacy YAML and the API JSON formats."""
 
 from yaml_conversion import converters as c
 from yaml_conversion import schema as s
@@ -28,6 +28,7 @@ SCHEMA = s.Message(
     auto_id_policy=s.Value('beta_settings',
                            lambda val: {'auto_id_policy': val}),
     automatic_scaling=s.Message(
+        converter=c.ConvertAutomaticScaling,
         cool_down_period_sec=s.Value('cool_down_period',
                                      converter=c.SecondsToDuration),
         cpu_utilization=s.Message(
@@ -43,12 +44,31 @@ SCHEMA = s.Message(
                                    c.StringToInt(handle_automatic=True)),
         max_pending_latency=s.Value(converter=c.LatencyToDuration),
         max_concurrent_requests=s.Value(converter=c.StringToInt()),
-        min_num_instances=s.Value('min_total_instances')),
+        min_num_instances=s.Value('min_total_instances'),
+        target_network_sent_bytes_per_sec=s.Value(
+            'target_sent_bytes_per_sec'),
+        target_network_sent_packets_per_sec=s.Value(
+            'target_sent_packets_per_sec'),
+        target_network_received_bytes_per_sec=s.Value(
+            'target_received_bytes_per_sec'),
+        target_network_received_packets_per_sec=s.Value(
+            'target_received_packets_per_sec'),
+        target_disk_write_bytes_per_sec=s.Value(
+            'target_write_bytes_per_sec'),
+        target_disk_write_ops_per_sec=s.Value(
+            'target_write_ops_per_sec'),
+        target_disk_read_bytes_per_sec=s.Value(
+            'target_read_bytes_per_sec'),
+        target_disk_read_ops_per_sec=s.Value(
+            'target_read_ops_per_sec'),
+        target_request_count_per_sec=s.Value(),
+        target_concurrent_requests=s.Value()),
     basic_scaling=s.Message(
         idle_timeout=s.Value(converter=c.IdleTimeoutToDuration),
         max_instances=s.Value(converter=c.StringToInt())),
     beta_settings=s.Map(),
     default_expiration=s.Value(converter=c.ExpirationToDuration),
+    env=s.Value(),
     env_variables=s.Map(),
     error_handlers=s.RepeatedField(element=s.Message(
         error_code=s.Value(converter=c.EnumConverter('ERROR_CODE')),
