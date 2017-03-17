@@ -679,7 +679,7 @@ class Type(Validator):
     """
     if not isinstance(value, self.expected_type):
       if value is None:
-        raise MissingAttribute('Missing value is required.')
+        raise MissingAttribute("Missing required value '%s'." % key)
 
       if self.convert:
         try:
