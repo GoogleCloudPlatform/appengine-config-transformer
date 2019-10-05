@@ -12,18 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#!/usr/bin/python2.4
-#
-# Copyright 2007 Google Inc. All Rights Reserved.
-
-
 # WARNING: This file is externally viewable by our users.  All comments from
 # this file will be stripped.  The docstrings will NOT.  Do not put sensitive
 # information in docstrings.  If you must communicate internal information in
 # this source file, please place them in comments only.
-
-
-
 
 
 from yaml_conversion.lib.google.appengine.api import validation
@@ -59,6 +51,7 @@ class _ObjectMapper(object):
     if key in self.seen:
       raise yaml_errors.DuplicateAttribute("Duplicate attribute '%s'." % key)
     self.seen.add(key)
+
 
 class _ObjectSequencer(object):
   """Wrapper used for building sequences from a yaml file to a list.
@@ -167,7 +160,7 @@ class ObjectBuilder(yaml_builder.Builder):
     except validation.ValidationError:
       # These should just pass through.
       raise
-    except Exception, e:
+    except Exception as e:
       # Some errors may have problematic encoding or other issues.
       # Re-raising an error in this block would be very hard to debug
       # for the time being so instead, on error, the value is merely
@@ -207,7 +200,7 @@ class ObjectBuilder(yaml_builder.Builder):
 
     try:
       attribute = subject.value.GetValidator(key)
-    except validation.ValidationError, err:
+    except validation.ValidationError as err:
       raise yaml_errors.UnexpectedAttribute(err)
 
     if isinstance(value, _ObjectMapper):
@@ -223,7 +216,7 @@ class ObjectBuilder(yaml_builder.Builder):
     subject.see(key)
     try:
       subject.value.Set(key, value)
-    except validation.ValidationError, e:
+    except validation.ValidationError as e:
       # Some errors may have problematic encoding or other issues.
       # Re-raising an error in this block would be very hard to debug
       # for the time being so instead, on error, the value is merely
@@ -242,7 +235,7 @@ class ObjectBuilder(yaml_builder.Builder):
       e.message = ("Unable to assign value '%s' to attribute '%s':\n%s" %
                    (value_str, key, error_str))
       raise e
-    except Exception, e:
+    except Exception as e:
       try:
         error_str = str(e)
       except Exception:
