@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#!/usr/bin/python2.4
-#
-# Copyright 2007 Google Inc. All Rights Reserved.
-
 """PyYAML event builder handler
 
 Receives events from YAML listener and forwards them to a builder
@@ -27,8 +23,6 @@ object so that it can construct a properly structured object.
 # this file will be stripped.  The docstrings will NOT.  Do not put sensitive
 # information in docstrings.  If you must communicate internal information in
 # this source file, please place them in comments only.
-
-
 
 
 from yaml_conversion.lib.google.appengine.api import yaml_errors
