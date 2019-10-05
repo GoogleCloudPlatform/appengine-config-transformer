@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#!/usr/bin/python2.4
-#
-# Copyright 2010 Google Inc. All Rights Reserved.
-
 """
 A library for working with BackendInfoExternal records, describing backends
 configured for an application. Supports loading the records from backend.yaml.

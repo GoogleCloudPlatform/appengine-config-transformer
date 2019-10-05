@@ -12,11 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#!/usr/bin/python2.4
-#
-# Copyright 2006 Google Inc.
-# All Rights Reserved.
-
 """Errors used in the Python appinfo API, used by app developers."""
 
 
@@ -24,9 +19,6 @@
 # this file will be stripped.  The docstrings will NOT.  Do not put sensitive
 # information in docstrings.  If you must communicate internal information in
 # this source file, please place them in comments only.
-
-
-
 
 
 class Error(Exception):

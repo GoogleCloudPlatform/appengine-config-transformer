@@ -12,17 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#!/usr/bin/python2.4
-#
-# Copyright 2007 Google Inc. All Rights Reserved.
-
 """PyYAML event listener
 
 Contains class which interprets YAML events and forwards them to
 a handler object.
 """
-
-
 
 from yaml_conversion.lib.google.appengine.api import yaml_errors
 import yaml
@@ -171,7 +165,7 @@ class EventListener(object):
     for event in events:
       try:
         self.HandleEvent(*event)
-      except Exception, e:
+      except Exception as e:
         event_object, loader = event
         raise yaml_errors.EventError(e, event_object)
 
@@ -207,7 +201,7 @@ class EventListener(object):
       loader = loader_class(stream)
       while loader.check_event():
         yield (loader.get_event(), loader)
-    except yaml.error.YAMLError, e:
+    except yaml.error.YAMLError as e:
       raise yaml_errors.EventListenerYAMLError(e)
 
   def Parse(self, stream, loader_class=yaml.loader.SafeLoader):

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Copyright 2007 Google Inc. All Rights Reserved.
-
 """AppInfo tools.
 
 Library for working with AppInfo records in memory, store and load from
@@ -33,7 +31,6 @@ configuration files.
 # to be reflected in the java code. For questions, talk to clouser@ or
 
 
-
 import logging
 import os
 import re
@@ -42,6 +39,8 @@ import sys
 import wsgiref.util
 
 # pylint: disable=g-import-not-at-top
+import six
+
 if os.environ.get('APPENGINE_RUNTIME') == 'python27':
   from google.appengine.api import validation
   from google.appengine.api import yaml_builder
@@ -702,7 +701,7 @@ class HttpHeadersDict(validation.ValidatedDict):
       original_name = name
 
       # Make sure only ASCII data is used.
-      if isinstance(name, unicode):
+      if isinstance(name, six.string_types):
         try:
           name = name.encode('ascii')
         except UnicodeEncodeError:
@@ -764,7 +763,7 @@ class HttpHeadersDict(validation.ValidatedDict):
           HTTP header value.
       """
       # Make sure only ASCII data is used.
-      if isinstance(value, unicode):
+      if isinstance(value, six.string_types):
         try:
           value = value.encode('ascii')
         except UnicodeEncodeError:
@@ -993,7 +992,7 @@ class URLMap(HandlerBase):
       # Matched id attribute, break out of loop.
       mapping_type = HANDLER_API_ENDPOINT
     else:
-      for id_field in URLMap.ALLOWED_FIELDS.iterkeys():
+      for id_field in URLMap.ALLOWED_FIELDS.keys():
         # Attributes always exist as defined by ATTRIBUTES.
         if getattr(self, id_field) is not None:
           # Matched id attribute, break out of loop.
@@ -1008,7 +1007,7 @@ class URLMap(HandlerBase):
 
     # Make sure that none of the set attributes on this handler
     # are not allowed for the discovered handler type.
-    for attribute in self.ATTRIBUTES.iterkeys():
+    for attribute in self.ATTRIBUTES.keys():
       if (getattr(self, attribute) is not None and
           not (attribute in allowed_fields or
                attribute in URLMap.COMMON_FIELDS or
@@ -1268,7 +1267,7 @@ class BuiltinHandler(validation.Validated):
     return None
 
   def ToDict(self):
-    """Convert BuiltinHander object to a dictionary.
+    """Convert BuiltinHandler object to a dictionary.
 
     Returns:
       dictionary of the form: {builtin_handler_name: on/off}
@@ -1392,7 +1391,7 @@ class CpuUtilization(validation.Validated):
       CPU_UTILIZATION_UTILIZATION: validation.Optional(
           validation.Range(1e-6, 1.0, float)),
       CPU_UTILIZATION_AGGREGATION_WINDOW_LENGTH_SEC: validation.Optional(
-          validation.Range(1, sys.maxint)),
+          validation.Range(1, sys.maxsize)),
   }
 
 
@@ -1406,31 +1405,31 @@ class AutomaticScaling(validation.Validated):
       MAXIMUM_CONCURRENT_REQUEST: validation.Optional(
           _CONCURRENT_REQUESTS_REGEX),
       # Attributes for VM-based AutomaticScaling.
-      MIN_NUM_INSTANCES: validation.Optional(validation.Range(1, sys.maxint)),
-      MAX_NUM_INSTANCES: validation.Optional(validation.Range(1, sys.maxint)),
+      MIN_NUM_INSTANCES: validation.Optional(validation.Range(1, sys.maxsize)),
+      MAX_NUM_INSTANCES: validation.Optional(validation.Range(1, sys.maxsize)),
       COOL_DOWN_PERIOD_SEC: validation.Optional(
-          validation.Range(60, sys.maxint, int)),
+          validation.Range(60, sys.maxsize, int)),
       CPU_UTILIZATION: validation.Optional(CpuUtilization),
       TARGET_NETWORK_SENT_BYTES_PER_SEC:
-      validation.Optional(validation.Range(1, sys.maxint)),
+      validation.Optional(validation.Range(1, sys.maxsize)),
       TARGET_NETWORK_SENT_PACKETS_PER_SEC:
-      validation.Optional(validation.Range(1, sys.maxint)),
+      validation.Optional(validation.Range(1, sys.maxsize)),
       TARGET_NETWORK_RECEIVED_BYTES_PER_SEC:
-      validation.Optional(validation.Range(1, sys.maxint)),
+      validation.Optional(validation.Range(1, sys.maxsize)),
       TARGET_NETWORK_RECEIVED_PACKETS_PER_SEC:
-      validation.Optional(validation.Range(1, sys.maxint)),
+      validation.Optional(validation.Range(1, sys.maxsize)),
       TARGET_DISK_WRITE_BYTES_PER_SEC:
-      validation.Optional(validation.Range(1, sys.maxint)),
+      validation.Optional(validation.Range(1, sys.maxsize)),
       TARGET_DISK_WRITE_OPS_PER_SEC:
-      validation.Optional(validation.Range(1, sys.maxint)),
+      validation.Optional(validation.Range(1, sys.maxsize)),
       TARGET_DISK_READ_BYTES_PER_SEC:
-      validation.Optional(validation.Range(1, sys.maxint)),
+      validation.Optional(validation.Range(1, sys.maxsize)),
       TARGET_DISK_READ_OPS_PER_SEC:
-      validation.Optional(validation.Range(1, sys.maxint)),
+      validation.Optional(validation.Range(1, sys.maxsize)),
       TARGET_REQUEST_COUNT_PER_SEC:
-      validation.Optional(validation.Range(1, sys.maxint)),
+      validation.Optional(validation.Range(1, sys.maxsize)),
       TARGET_CONCURRENT_REQUESTS:
-      validation.Optional(validation.Range(1, sys.maxint)),
+      validation.Optional(validation.Range(1, sys.maxsize)),
   }
 
 
@@ -1570,11 +1569,11 @@ class HealthCheck(validation.Validated):
   """
   ATTRIBUTES = {
       ENABLE_HEALTH_CHECK: validation.Optional(validation.TYPE_BOOL),
-      CHECK_INTERVAL_SEC: validation.Optional(validation.Range(0, sys.maxint)),
-      TIMEOUT_SEC: validation.Optional(validation.Range(0, sys.maxint)),
-      UNHEALTHY_THRESHOLD: validation.Optional(validation.Range(0, sys.maxint)),
-      HEALTHY_THRESHOLD: validation.Optional(validation.Range(0, sys.maxint)),
-      RESTART_THRESHOLD: validation.Optional(validation.Range(0, sys.maxint)),
+      CHECK_INTERVAL_SEC: validation.Optional(validation.Range(0, sys.maxsize)),
+      TIMEOUT_SEC: validation.Optional(validation.Range(0, sys.maxsize)),
+      UNHEALTHY_THRESHOLD: validation.Optional(validation.Range(0, sys.maxsize)),
+      HEALTHY_THRESHOLD: validation.Optional(validation.Range(0, sys.maxsize)),
+      RESTART_THRESHOLD: validation.Optional(validation.Range(0, sys.maxsize)),
       HOST: validation.Optional(validation.TYPE_STR)}
 
 
@@ -2079,10 +2078,10 @@ class AppInfoExternal(validation.Validated):
       runtime is "vm", or runtime otherwise.
     """
     if (self.runtime == 'vm' and hasattr(self, 'vm_settings')
-        and self.vm_settings is not None):
+       and self.vm_settings is not None):
       return self.vm_settings.get('vm_runtime')
     if (self.runtime == 'vm' and hasattr(self, 'beta_settings')
-        and self.beta_settings is not None):
+       and self.beta_settings is not None):
       return self.beta_settings.get('vm_runtime')
     return self.runtime
 
@@ -2137,6 +2136,7 @@ class AppInfoExternal(validation.Validated):
   def IsVm(self):
     return (self.vm or
             self.env in ['2', 'flex', 'flexible'])
+
 
 def ValidateHandlers(handlers, is_include_file=False):
   """Validates a list of handler (URLMap) objects.

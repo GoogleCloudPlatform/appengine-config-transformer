@@ -21,7 +21,7 @@ from yaml_conversion.lib.google.appengine.api import appinfo
 
 _SECONDS_PER_MINUTE = 60
 _MILLISECONDS_PER_SECOND = 1000
-_NANOSECONDS_PER_SECOND = 1000000000L
+_NANOSECONDS_PER_SECOND = 1000000000
 
 _COMMON_HANDLER_FIELDS = (
     'urlRegex',
@@ -99,7 +99,7 @@ def EnumConverter(prefix):
     raise ValueError(
         'Prefix should not contain a trailing underscore: "%s"' % prefix)
 
-  return lambda (value): '_'.join([prefix, value.upper()])
+  return lambda value: '_'.join([prefix, value.upper()])
 
 
 def Not(value):

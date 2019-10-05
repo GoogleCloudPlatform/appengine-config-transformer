@@ -12,18 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#!/usr/bin/python2.4
-#
-# Copyright 2006 Google Inc.
-# All Rights Reserved.
-
 """Errors used in the YAML API, which is used by app developers."""
-
-
 
 
 class Error(Exception):
   """Base datastore yaml error type."""
+
 
 class ProtocolBufferParseError(Error):
   """Error in protocol buffer parsing"""

@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#!/usr/bin/python2.4
-#
-# Copyright 2007 Google Inc. All Rights Reserved.
-
 """Validation tools for generic object structures.
 
 This library is used for defining classes with constrained attributes.
@@ -35,9 +31,6 @@ This validation library is mainly intended for use with the YAML object
 builder.  See yaml_object.py.
 """
 
-
-
-
 # WARNING: This file is externally viewable by our users.  All comments from
 # this file will be stripped.  The docstrings will NOT.  Do not put sensitive
 # information in docstrings.  If you must communicate internal information in
@@ -45,7 +38,9 @@ builder.  See yaml_object.py.
 
 
 import re
+import sys
 
+import six
 import yaml
 
 
@@ -100,7 +95,7 @@ def AsValidator(validator):
     AttributeDefinitionError: if validator is not one of the above described
       types.
   """
-  if isinstance(validator, (str, unicode)):
+  if isinstance(validator, (str, six.string_types)):
     return Regex(validator, type(validator))
   if isinstance(validator, type):
     return Type(validator)
@@ -170,7 +165,7 @@ class ValidatedBase(object):
     Raises:
       ValidationError: when no validated attribute exists on class.
     """
-    for key, value in attributes.iteritems():
+    for key, value in attributes.items():
       self.Set(key, value)
 
   def Set(self, key, value):
@@ -329,10 +324,10 @@ class Validated(ValidatedBase):
       is determined by the validator.  Typically this will be ValueError or
       TypeError.
     """
-    for key in self.ATTRIBUTES.iterkeys():
+    for key in self.ATTRIBUTES.keys():
       try:
         self.GetValidator(key)(getattr(self, key))
-      except MissingAttribute, e:
+      except MissingAttribute as e:
         e.message = "Missing required value '%s'." % key
         raise e
 
@@ -386,7 +381,7 @@ class Validated(ValidatedBase):
     """
     if type(self) != type(other):
       return False
-    for key in self.ATTRIBUTES.iterkeys():
+    for key in self.ATTRIBUTES.keys():
       if getattr(self, key) != getattr(other, key):
         return False
     return True
@@ -404,7 +399,7 @@ class Validated(ValidatedBase):
       Hash of validated object.
     """
     result = 0
-    for key in self.ATTRIBUTES.iterkeys():
+    for key in self.ATTRIBUTES.keys():
       value = getattr(self, key)
       if isinstance(value, list):
         value = tuple(value)
@@ -424,7 +419,7 @@ class Validated(ValidatedBase):
       dicts.
     """
     result = {}
-    for name, validator in self.ATTRIBUTES.iteritems():
+    for name, validator in self.ATTRIBUTES.items():
       value = getattr(self, name)
       # Skips values that are the same as the default value.
       if not(isinstance(validator, Validator) and value == validator.default):
@@ -558,7 +553,7 @@ class ValidatedDict(ValidatedBase, dict):
       A dictionary mapping all attributes to simple values or collections.
     """
     result = {}
-    for name, value in self.iteritems():
+    for name, value in self.items():
       validator = self.GetValidator(name)
       result[name] = _SimplifiedValue(validator, value)
     return result
@@ -684,11 +679,11 @@ class Type(Validator):
       if self.convert:
         try:
           return self.expected_type(value)
-        except ValueError, e:
+        except ValueError as e:
           raise ValidationError(
               'Value %r for %s could not be converted to type %s.' % (
                   value, key, self.expected_type.__name__), e)
-        except TypeError, e:
+        except TypeError as e:
           raise ValidationError(
               'Value %r for %s is not of the expected type %s' % (
                   value, key, self.expected_type.__name__), e)
@@ -702,9 +697,13 @@ class Type(Validator):
 
 TYPE_BOOL = Type(bool)
 TYPE_INT = Type(int)
-TYPE_LONG = Type(long)
+if sys.version_info[0] >= 3:
+    TYPE_LONG = Type(long)
+    TYPE_UNICODE = Type(unicode)
+else:
+    TYPE_LONG = Type(int)
+    TYPE_UNICODE = Type(str)
 TYPE_STR = Type(str)
-TYPE_UNICODE = Type(unicode)
 TYPE_FLOAT = Type(float)
 
 
@@ -878,7 +877,7 @@ class Regex(Validator):
     my_class(name='AName with space', parent=AnotherClass)
   """
 
-  def __init__(self, regex, string_type=unicode, default=None):
+  def __init__(self, regex, string_type=six.string_types, default=None):
     """Initialized regex validator.
 
     Args:
@@ -888,11 +887,11 @@ class Regex(Validator):
       AttributeDefinitionError: if string_type is not a kind of string.
     """
     super(Regex, self).__init__(default)
-    if (not issubclass(string_type, basestring) or
-        string_type is basestring):
+    if (not issubclass(string_type, six.string_types) or
+        string_type in six.string_types):
       raise AttributeDefinitionError(
           'Regex fields must be a string type not %s.' % str(string_type))
-    if isinstance(regex, basestring):
+    if isinstance(regex, six.string_types):
       self.re = re.compile('^(?:%s)$' % regex)
     else:
       raise AttributeDefinitionError(
@@ -996,7 +995,7 @@ class _RegexStrValue(object):
     regex = self.__BuildRegex()
     try:
       return re.compile(regex)
-    except re.error, e:
+    except re.error as e:
       raise ValidationError('Value \'%s\' for %s does not compile: %s' %
                             (regex, self.__key, e), e)
 
@@ -1040,7 +1039,7 @@ class RegexStr(Validator):
   The attribute will then be a compiled re object.
   """
 
-  def __init__(self, string_type=unicode, default=None):
+  def __init__(self, string_type=six.string_types, default=None):
     """Initialized regex validator.
 
     Raises:
@@ -1050,8 +1049,8 @@ class RegexStr(Validator):
       default = _RegexStrValue(self, default, None)
       re.compile(str(default))
     super(RegexStr, self).__init__(default)
-    if (not issubclass(string_type, basestring) or
-        string_type is basestring):
+    if (not issubclass(string_type, six.string_types) or
+        string_type in six.string_types):
       raise AttributeDefinitionError(
           'RegexStr fields must be a string type not %s.' % str(string_type))
 
@@ -1221,7 +1220,7 @@ class TimeValue(Validator):
     Raises:
       ValidationError: if value is not a time value with the expected format.
     """
-    if not isinstance(value, basestring):
+    if not isinstance(value, six.string_types):
       raise ValidationError("Value '%s' for %s is not a string (%s)"
                             % (value, key, TimeValue._EXPECTED_SYNTAX))
     if not value:
