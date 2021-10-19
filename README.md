@@ -10,12 +10,12 @@ into JSON formatted files that are suppported by the Google App Engine Admin API
 
 * Install Python, either:
   * [Python 2.7](https://www.python.org/)
-  * [App Engine SDK for Python](https://cloud-dot-devsite.googleplex.com/appengine/downloads#Google_App_Engine_SDK_for_Python)
+  * [App Engine SDK for Python](https://cloud.google.com/appengine/downloads#Google_App_Engine_SDK_for_Python)
 * Install the 'yaml' library: [PyYAML package](https://pypi.python.org/pypi/PyYAML)
 
 ### Example Installation:
 
-1. Download and install the [App Engine SDK for Python](https://cloud-dot-devsite.googleplex.com/appengine/downloads#Google_App_Engine_SDK_for_Python).
+1. Download and install the [App Engine SDK for Python](https://cloud.google.com/appengine/downloads#Google_App_Engine_SDK_for_Python).
 1. Install the 'yaml' library:  
    `sudo apt-get install python-yaml`
 1. Clone the appengine-config-transformer project:  
